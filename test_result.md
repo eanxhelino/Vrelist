@@ -270,10 +270,10 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Vinted API Integration"
+    - "Dashboard UI with Metrics"
+    - "Product Import UI"
+    - "Bulk Relist UI"
   stuck_tasks:
-    - "Vinted API Integration"
-    - "Product Import Functionality" 
     - "Product Relist Functionality"
   test_all: false
   test_priority: "high_first"
