@@ -336,8 +336,23 @@ async def relist_products(request: RelistRequest, current_user: User = Depends(g
                     results.append({"product_id": product_id, "success": False, "error": "Product not found"})
                     continue
                 
-                # Relist on Vinted
-                await vinted_client.relist_product(product_doc["vinted_id"])
+                # Note: For full relisting, we would need to handle photo uploads
+                # This is a simplified version that creates a basic relist
+                relist_data = {
+                    "title": product_doc.get("title", ""),
+                    "description": product_doc.get("description", ""),
+                    "price": product_doc.get("price", 0),
+                    "currency": product_doc.get("currency", "GBP"),
+                    "brand": product_doc.get("brand", ""),
+                    "brand_id": 1,  # Default to "List without brand"
+                    "catalog_id": 3829,  # Default category, should be dynamic
+                    "color_ids": [1],  # Default color
+                    "assigned_photos": [],  # Would need photo upload integration
+                    "item_attributes": []
+                }
+                
+                # Create new listing (relist)
+                relist_response = await vinted_client.relist_product(relist_data)
                 
                 # Update last relisted timestamp
                 await db.products.update_one(
@@ -345,7 +360,7 @@ async def relist_products(request: RelistRequest, current_user: User = Depends(g
                     {"$set": {"last_relisted": datetime.utcnow()}}
                 )
                 
-                results.append({"product_id": product_id, "success": True})
+                results.append({"product_id": product_id, "success": True, "vinted_response": relist_response})
                 
             except Exception as e:
                 results.append({"product_id": product_id, "success": False, "error": str(e)})
