@@ -122,11 +122,11 @@ backend:
 
   - task: "Vinted API Integration"
     implemented: true
-    working: false
+    working: false  # needs retesting with fresh tokens
     file: "/app/backend/server.py"
     stuck_count: 1
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
       - working: "NA"
         agent: "main"
@@ -134,6 +134,9 @@ backend:
       - working: false
         agent: "testing"
         comment: "❌ CRITICAL: Vinted API returning 401 'invalid_authentication_token' error. Provided tokens appear expired. VintedClient implementation is correct but cannot test functionality without valid tokens. Error: 'Jeton d'authentification invalide'"
+      - working: "NA"
+        agent: "main"
+        comment: "✅ UPDATED: Completely rebuilt VintedClient with real Vinted API endpoints and request formats from user's working examples. Added proper headers, updated to use /api/v2/wardrobe/{user_id}/items and /api/v2/item_upload/items. Ready for testing with fresh tokens."
 
   - task: "Product Import Functionality"
     implemented: true
