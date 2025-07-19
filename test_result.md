@@ -267,5 +267,7 @@ agent_communication:
     message: "Backend testing completed. Core functionality (auth, dashboard, products API) working correctly. Vinted API integration blocked by expired tokens. Architecture is sound, need valid tokens for full functionality."
   - agent: "main"
     message: "RESEARCH COMPLETED: Found that Vinted has official API requiring Vinted Pro membership and HMAC-signed requests. The tokens provided appear to be from browser/web scraping method which may not be stable. User needs to either: 1) Get Vinted Pro API access, or 2) Provide fresh browser-extracted tokens if continuing with unofficial method."
+  - agent: "main"
+    message: "USER PROVIDED FRESH TOKENS! Updated backend with real Vinted API integration using correct endpoints: /api/v2/wardrobe/{user_id}/items for fetching products, /api/v2/item_upload/items for creating listings. Updated VintedClient with proper headers and request format matching user's working examples. Ready for testing with fresh tokens: CSRF=75f6c9fa-dc8e-4e52-a000-e09dd4084b3e, user_id=280533141"
   - agent: "testing"
     message: "Backend API testing completed. Authentication system working correctly - users can login and receive user_id tokens. Database operations (get products, dashboard stats) working properly. CRITICAL ISSUE: Vinted API integration failing with 401 'invalid_authentication_token' error - provided tokens appear to be expired. Product import and relist functionality cannot be tested until valid Vinted API tokens are provided. All other backend endpoints functioning correctly."
