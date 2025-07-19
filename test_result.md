@@ -158,11 +158,11 @@ backend:
 
   - task: "Product Relist Functionality"
     implemented: true
-    working: false
+    working: false  # needs retesting with fresh tokens
     file: "/app/backend/server.py"
     stuck_count: 1
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
       - working: "NA"
         agent: "main"
@@ -170,6 +170,9 @@ backend:
       - working: false
         agent: "testing"
         comment: "❌ BLOCKED: Cannot test product relist functionality - no products available due to import failure. Endpoint implementation appears correct but depends on successful product import."
+      - working: "NA"
+        agent: "main"
+        comment: "✅ UPDATED: Rebuilt relist functionality to use real Vinted /api/v2/item_upload/items endpoint for creating new listings. Updated to match exact request format from user's working examples. Ready for testing."
 
   - task: "Dashboard Statistics API"
     implemented: true
