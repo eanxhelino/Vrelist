@@ -107,75 +107,93 @@ user_problem_statement: "Build a Vinted Relist app where users can import all th
 backend:
   - task: "User Authentication System"
     implemented: true
-    working: false  # needs testing
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Implemented POST /api/auth/login endpoint that accepts csrf_token and auth_token, saves user to MongoDB, and returns user_id for authentication"
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: Authentication endpoint working correctly. Successfully accepts CSRF and auth tokens, saves user to MongoDB, returns valid user_id. Login response format correct with proper JSON structure."
 
   - task: "Vinted API Integration"
     implemented: true
-    working: false  # needs testing
+    working: false
     file: "/app/backend/server.py"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Created VintedClient class with methods for get_user_wardrobe, get_product_details, relist_product, and delete_product using provided API endpoints"
+      - working: false
+        agent: "testing"
+        comment: "❌ CRITICAL: Vinted API returning 401 'invalid_authentication_token' error. Provided tokens appear expired. VintedClient implementation is correct but cannot test functionality without valid tokens. Error: 'Jeton d'authentification invalide'"
 
   - task: "Product Import Functionality"
     implemented: true
-    working: false  # needs testing
+    working: false
     file: "/app/backend/server.py"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Implemented GET /api/products/import/{user_id} endpoint that fetches products from Vinted wardrobe API and stores them in MongoDB"
+      - working: false
+        agent: "testing"
+        comment: "❌ BLOCKED: Cannot test product import due to Vinted API 401 authentication failure. Endpoint structure and error handling appear correct, but blocked by expired tokens."
 
   - task: "Product Relist Functionality"
     implemented: true
-    working: false  # needs testing
+    working: false
     file: "/app/backend/server.py"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Implemented POST /api/products/relist endpoint that accepts product_ids array and calls Vinted relist API for each product"
+      - working: false
+        agent: "testing"
+        comment: "❌ BLOCKED: Cannot test product relist functionality - no products available due to import failure. Endpoint implementation appears correct but depends on successful product import."
 
   - task: "Dashboard Statistics API"
     implemented: true
-    working: false  # needs testing
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Implemented GET /api/dashboard/stats endpoint that aggregates product statistics including total products, revenue, views, and recent activity"
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: Dashboard stats endpoint working correctly. Returns proper JSON with all required fields: total_products, active_products, sold_products, total_revenue, total_views, avg_sale_time, recent_activity."
 
   - task: "Get Products API"
     implemented: true
-    working: false  # needs testing
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Implemented GET /api/products endpoint that returns all products for authenticated user"
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: Get products endpoint working correctly. Returns empty array when no products exist (expected behavior). Proper authentication required and JSON response format correct."
 
 frontend:
   - task: "User Authentication UI"
