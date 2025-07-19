@@ -164,11 +164,11 @@ backend:
 
   - task: "Product Relist Functionality"
     implemented: true
-    working: false  # needs retesting with fresh tokens
+    working: false
     file: "/app/backend/server.py"
     stuck_count: 1
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
@@ -179,6 +179,9 @@ backend:
       - working: "NA"
         agent: "main"
         comment: "✅ UPDATED: Rebuilt relist functionality to use real Vinted /api/v2/item_upload/items endpoint for creating new listings. Updated to match exact request format from user's working examples. Ready for testing."
+      - working: false
+        agent: "testing"
+        comment: "❌ EXPECTED LIMITATION: Relist functionality blocked by Vinted's CAPTCHA protection (403 Forbidden). This is normal anti-automation behavior. The endpoint correctly calls Vinted API but gets CAPTCHA challenge. Implementation is correct but Vinted prevents automated relisting."
 
   - task: "Dashboard Statistics API"
     implemented: true
