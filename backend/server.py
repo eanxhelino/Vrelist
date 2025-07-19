@@ -216,17 +216,27 @@ def transform_vinted_product(vinted_item: dict, user_id: str) -> VintedProduct:
     if "photos" in vinted_item and vinted_item["photos"]:
         photos = [photo.get("url", "") for photo in vinted_item["photos"] if photo.get("url")]
     
+    # Handle price structure from Vinted API
+    price_amount = 0
+    currency = "GBP"
+    if "price" in vinted_item:
+        if isinstance(vinted_item["price"], dict):
+            price_amount = float(vinted_item["price"].get("amount", 0))
+            currency = vinted_item["price"].get("currency", "GBP")
+        else:
+            price_amount = float(vinted_item.get("price", 0))
+    
     return VintedProduct(
         id=str(uuid.uuid4()),
         vinted_id=str(vinted_item.get("id", "")),
         title=vinted_item.get("title", ""),
-        price=float(vinted_item.get("price", {}).get("amount", 0)),
-        currency=vinted_item.get("price", {}).get("currency_code", "EUR"),
+        price=price_amount,
+        currency=currency,
         description=vinted_item.get("description", ""),
         brand=vinted_item.get("brand", {}).get("title", "") if vinted_item.get("brand") else "",
         size=vinted_item.get("size_title", ""),
         condition=vinted_item.get("status", ""),
-        category=vinted_item.get("catalog_branch", {}).get("title", "") if vinted_item.get("catalog_branch") else "",
+        category=vinted_item.get("catalog", {}).get("title", "") if vinted_item.get("catalog") else "",
         photos=photos,
         views=vinted_item.get("view_count", 0),
         likes=vinted_item.get("favourite_count", 0),
