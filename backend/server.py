@@ -438,6 +438,15 @@ logger = logging.getLogger(__name__)
 async def shutdown_db_client():
     client.close()
 
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+# Path to React build
+react_build_path = ROOT_DIR.parent / "frontend" / "build"
+
+# Serve React static files
+app.mount("/", StaticFiles(directory=react_build_path, html=True), name="static")
+
 @app.get("/")
-async def root():
-    return {"message": "Welcome to the Vinted Relist API"}
+async def serve_react():
+    return FileResponse(react_build_path / "index.html")
