@@ -140,11 +140,11 @@ backend:
 
   - task: "Product Import Functionality"
     implemented: true
-    working: false
+    working: false  # needs retesting with fresh tokens
     file: "/app/backend/server.py"
     stuck_count: 1
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
       - working: "NA"
         agent: "main"
@@ -152,6 +152,9 @@ backend:
       - working: false
         agent: "testing"
         comment: "❌ BLOCKED: Cannot test product import due to Vinted API 401 authentication failure. Endpoint structure and error handling appear correct, but blocked by expired tokens."
+      - working: "NA"
+        agent: "main"
+        comment: "✅ UPDATED: Updated product import to use real Vinted wardrobe API format and improved product transformation to handle real API response structure. Ready for testing."
 
   - task: "Product Relist Functionality"
     implemented: true
