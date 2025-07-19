@@ -252,11 +252,11 @@ metadata:
 
 test_plan:
   current_focus:
-    - "User Authentication System"
     - "Vinted API Integration"
-    - "Product Import Functionality"
+  stuck_tasks:
+    - "Vinted API Integration"
+    - "Product Import Functionality" 
     - "Product Relist Functionality"
-  stuck_tasks: []
   test_all: false
   test_priority: "high_first"
 
