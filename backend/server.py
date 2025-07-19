@@ -83,8 +83,16 @@ class VintedClient:
         self.headers = {
             "x-csrf-token": csrf_token,
             "Authorization": f"Bearer {auth_token}",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-            "Content-Type": "application/json"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/plain, */*",
+            "X-Anon-Id": "d30a9fe1-0309-4dcf-bfde-7578b228a7ef",
+            "sec-ch-ua": '"Not)A;Brand";v="8", "Chromium";v="138", "Google Chrome";v="138"',
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": '"Windows"',
+            "sec-fetch-dest": "empty",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-site": "same-origin"
         }
 
     async def get_user_wardrobe(self, user_id: str, page: int = 1, per_page: int = 20):
@@ -94,13 +102,16 @@ class VintedClient:
             "per_page": per_page,
             "order": "relevance"
         }
+        headers = self.headers.copy()
+        headers["X-Money-Object"] = "true"
+        
         async with httpx.AsyncClient() as client:
             try:
-                response = await client.get(url, headers=self.headers, params=params)
+                response = await client.get(url, headers=headers, params=params)
                 if response.status_code == 200:
                     return response.json()
                 else:
-                    raise HTTPException(status_code=response.status_code, detail="Failed to fetch wardrobe")
+                    raise HTTPException(status_code=response.status_code, detail=f"Failed to fetch wardrobe: {response.text}")
             except Exception as e:
                 raise HTTPException(status_code=500, detail=f"Error fetching wardrobe: {str(e)}")
 
@@ -112,21 +123,70 @@ class VintedClient:
                 if response.status_code == 200:
                     return response.json()
                 else:
-                    raise HTTPException(status_code=response.status_code, detail="Failed to fetch product details")
+                    raise HTTPException(status_code=response.status_code, detail=f"Failed to fetch product details: {response.text}")
             except Exception as e:
                 raise HTTPException(status_code=500, detail=f"Error fetching product: {str(e)}")
 
-    async def relist_product(self, product_id: str):
-        url = f"https://www.vinted.co.uk/api/v2/items/{product_id}/post"
+    async def create_listing(self, listing_data: dict):
+        """Create a new listing (relist) using the item_upload endpoint"""
+        url = "https://www.vinted.co.uk/api/v2/item_upload/items"
+        headers = self.headers.copy()
+        headers["X-Upload-Form"] = "true"
+        headers["X-Enable-Multiple-Size-Groups"] = "true"
+        
         async with httpx.AsyncClient() as client:
             try:
-                response = await client.post(url, headers=self.headers)
+                response = await client.post(url, headers=headers, json=listing_data)
                 if response.status_code == 200:
                     return response.json()
                 else:
-                    raise HTTPException(status_code=response.status_code, detail="Failed to relist product")
+                    raise HTTPException(status_code=response.status_code, detail=f"Failed to create listing: {response.text}")
             except Exception as e:
-                raise HTTPException(status_code=500, detail=f"Error relisting product: {str(e)}")
+                raise HTTPException(status_code=500, detail=f"Error creating listing: {str(e)}")
+
+    async def relist_product(self, product_data: dict):
+        """Relist a product by creating a new listing with the same data"""
+        # Generate new UUID for the relist
+        import uuid
+        temp_uuid = str(uuid.uuid4())
+        
+        # Create listing payload based on Vinted's expected format
+        listing_payload = {
+            "item": {
+                "id": None,  # New listing
+                "currency": product_data.get("currency", "GBP"),
+                "temp_uuid": temp_uuid,
+                "title": product_data.get("title", ""),
+                "description": product_data.get("description", ""),
+                "brand_id": product_data.get("brand_id", 1),
+                "brand": product_data.get("brand", "List without brand"),
+                "size_id": product_data.get("size_id"),
+                "catalog_id": product_data.get("catalog_id", 3829),
+                "isbn": None,
+                "is_unisex": product_data.get("is_unisex", False),
+                "status_id": 6,  # Available
+                "video_game_rating_id": None,
+                "price": float(product_data.get("price", 0)),
+                "package_size_id": product_data.get("package_size_id", 2),
+                "shipment_prices": {
+                    "domestic": None,
+                    "international": None
+                },
+                "color_ids": product_data.get("color_ids", [1]),
+                "assigned_photos": product_data.get("assigned_photos", []),
+                "measurement_length": None,
+                "measurement_width": None,
+                "item_attributes": product_data.get("item_attributes", []),
+                "manufacturer": None,
+                "manufacturer_labelling": None
+            },
+            "feedback_id": None,
+            "push_up": False,
+            "parcel": None,
+            "upload_session_id": temp_uuid
+        }
+        
+        return await self.create_listing(listing_payload)
 
     async def delete_product(self, product_id: str):
         url = f"https://www.vinted.co.uk/api/v2/items/{product_id}/delete"
@@ -136,7 +196,7 @@ class VintedClient:
                 if response.status_code == 200:
                     return response.json()
                 else:
-                    raise HTTPException(status_code=response.status_code, detail="Failed to delete product")
+                    raise HTTPException(status_code=response.status_code, detail=f"Failed to delete product: {response.text}")
             except Exception as e:
                 raise HTTPException(status_code=500, detail=f"Error deleting product: {str(e)}")
 
