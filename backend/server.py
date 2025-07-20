@@ -683,13 +683,20 @@ async def shutdown_db_client():
 
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from pathlib import Path
+import os
 
 # Path to React build
 react_build_path = ROOT_DIR.parent / "frontend" / "build"
 
-# Serve React static files
-app.mount("/", StaticFiles(directory=react_build_path, html=True), name="static")
-
-@app.get("/")
-async def serve_react():
-    return FileResponse(react_build_path / "index.html")
+# Only serve React static files if build directory exists
+if os.path.exists(react_build_path):
+    app.mount("/", StaticFiles(directory=react_build_path, html=True), name="static")
+    
+    @app.get("/")
+    async def serve_react():
+        return FileResponse(react_build_path / "index.html")
+else:
+    @app.get("/")
+    async def root():
+        return {"message": "Vinted Relist API", "endpoints": "/docs"}
