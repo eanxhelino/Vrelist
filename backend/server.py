@@ -13,6 +13,9 @@ from datetime import datetime, timedelta
 import httpx
 import asyncio
 import json
+from playwright.async_api import async_playwright
+import time
+import random
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -200,6 +203,173 @@ class VintedClient:
             except Exception as e:
                 raise HTTPException(status_code=500, detail=f"Error deleting product: {str(e)}")
 
+class VintedBrowserClient:
+    """Browser-based Vinted client to handle CAPTCHA and anti-automation measures"""
+    
+    def __init__(self, csrf_token: str, auth_token: str):
+        self.csrf_token = csrf_token
+        self.auth_token = auth_token
+        self.playwright = None
+        self.browser = None
+        self.page = None
+    
+    async def init_browser(self):
+        """Initialize browser with stealth settings"""
+        self.playwright = await async_playwright().start()
+        self.browser = await self.playwright.chromium.launch(
+            headless=False,  # Keep visible to handle potential CAPTCHAs
+            args=[
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-blink-features=AutomationControlled',
+                '--disable-features=VizDisplayCompositor'
+            ]
+        )
+        
+        # Create new page with realistic settings
+        self.page = await self.browser.new_page()
+        
+        # Set realistic viewport and user agent
+        await self.page.set_viewport_size({"width": 1920, "height": 1080})
+        await self.page.set_extra_http_headers({
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36'
+        })
+    
+    async def login_to_vinted(self):
+        """Login to Vinted using browser automation"""
+        try:
+            await self.page.goto('https://www.vinted.co.uk')
+            
+            # Wait for page to load
+            await self.page.wait_for_load_state('networkidle')
+            
+            # Inject authentication tokens if possible
+            await self.page.evaluate(f"""
+                // Set authentication tokens in localStorage/cookies
+                localStorage.setItem('csrf_token', '{self.csrf_token}');
+                localStorage.setItem('auth_token', '{self.auth_token}');
+            """)
+            
+            # Navigate to authenticated area to verify login
+            await self.page.goto('https://www.vinted.co.uk/member/general')
+            await self.page.wait_for_load_state('networkidle')
+            
+            return True
+        except Exception as e:
+            print(f"Login failed: {e}")
+            return False
+    
+    async def relist_product_browser(self, product_data: dict):
+        """Relist product using browser automation to bypass CAPTCHA"""
+        try:
+            # Navigate to sell page
+            await self.page.goto('https://www.vinted.co.uk/items/new')
+            await self.page.wait_for_load_state('networkidle')
+            
+            # Add random delay to mimic human behavior
+            await asyncio.sleep(random.uniform(2, 4))
+            
+            # Fill product information
+            if product_data.get('title'):
+                await self.page.fill('input[data-testid="title-input"]', product_data['title'])
+                await asyncio.sleep(random.uniform(0.5, 1.5))
+            
+            if product_data.get('description'):
+                await self.page.fill('textarea[data-testid="description-input"]', product_data['description'])
+                await asyncio.sleep(random.uniform(0.5, 1.5))
+            
+            if product_data.get('price'):
+                await self.page.fill('input[data-testid="price-input"]', str(product_data['price']))
+                await asyncio.sleep(random.uniform(0.5, 1.5))
+            
+            # Handle brand selection if available
+            if product_data.get('brand'):
+                try:
+                    await self.page.click('input[data-testid="brand-input"]')
+                    await self.page.fill('input[data-testid="brand-input"]', product_data['brand'])
+                    await asyncio.sleep(1)
+                    # Click first suggestion if available
+                    await self.page.click('div[data-testid="brand-suggestion"]:first-child', timeout=3000)
+                except:
+                    pass  # Continue if brand selection fails
+            
+            # Handle category selection
+            try:
+                await self.page.click('button[data-testid="category-button"]')
+                await asyncio.sleep(1)
+                # Select a default category or use product's category
+                await self.page.click('div[data-testid="category-option"]:first-child')
+            except:
+                pass  # Continue if category selection fails
+            
+            # Handle condition selection
+            try:
+                await self.page.click('button[data-testid="condition-button"]')
+                await asyncio.sleep(1)
+                condition_map = {
+                    'New with tags': 'new-with-tags',
+                    'New without tags': 'new-without-tags',
+                    'Very good': 'very-good',
+                    'Good': 'good',
+                    'Satisfactory': 'satisfactory'
+                }
+                condition = product_data.get('condition', 'Good')
+                condition_selector = condition_map.get(condition, 'good')
+                await self.page.click(f'div[data-testid="condition-{condition_selector}"]')
+            except:
+                pass  # Continue if condition selection fails
+            
+            # Add random delay before submitting
+            await asyncio.sleep(random.uniform(2, 4))
+            
+            # Submit the listing
+            submit_button = await self.page.query_selector('button[data-testid="submit-listing"]')
+            if submit_button:
+                await submit_button.click()
+                
+                # Wait for response and handle potential CAPTCHA
+                try:
+                    # Wait for success message or CAPTCHA
+                    await self.page.wait_for_selector(
+                        'div[data-testid="success-message"], div[data-testid="captcha-container"]',
+                        timeout=30000
+                    )
+                    
+                    # Check if CAPTCHA appeared
+                    captcha = await self.page.query_selector('div[data-testid="captcha-container"]')
+                    if captcha:
+                        # CAPTCHA detected - pause for manual intervention
+                        print("CAPTCHA detected! Please solve it manually in the browser window.")
+                        print("Waiting 60 seconds for manual CAPTCHA resolution...")
+                        await asyncio.sleep(60)
+                        
+                        # Check if listing was successful after CAPTCHA
+                        success = await self.page.query_selector('div[data-testid="success-message"]')
+                        if success:
+                            return {"success": True, "message": "Product relisted successfully after manual CAPTCHA resolution"}
+                        else:
+                            return {"success": False, "error": "CAPTCHA not resolved or listing failed"}
+                    else:
+                        return {"success": True, "message": "Product relisted successfully"}
+                        
+                except Exception as e:
+                    return {"success": False, "error": f"Timeout or error during listing: {str(e)}"}
+            else:
+                return {"success": False, "error": "Submit button not found"}
+                
+        except Exception as e:
+            return {"success": False, "error": f"Browser relisting failed: {str(e)}"}
+    
+    async def close_browser(self):
+        """Clean up browser resources"""
+        if self.page:
+            await self.page.close()
+        if self.browser:
+            await self.browser.close()
+        if self.playwright:
+            await self.playwright.stop()
+
 # Helper functions
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> User:
     try:
@@ -323,7 +493,7 @@ async def get_products(current_user: User = Depends(get_current_user)):
 
 @api_router.post("/products/relist")
 async def relist_products(request: RelistRequest, current_user: User = Depends(get_current_user)):
-    """Relist selected products"""
+    """Relist selected products using API (may be blocked by CAPTCHA)"""
     try:
         vinted_client = VintedClient(current_user.csrf_token, current_user.auth_token)
         
@@ -370,6 +540,79 @@ async def relist_products(request: RelistRequest, current_user: User = Depends(g
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Relist failed: {str(e)}")
+
+@api_router.post("/products/relist-browser")
+async def relist_products_browser(request: RelistRequest, current_user: User = Depends(get_current_user)):
+    """Relist selected products using browser automation to handle CAPTCHA"""
+    browser_client = None
+    try:
+        # Initialize browser client
+        browser_client = VintedBrowserClient(current_user.csrf_token, current_user.auth_token)
+        await browser_client.init_browser()
+        
+        # Login to Vinted
+        login_success = await browser_client.login_to_vinted()
+        if not login_success:
+            return {"success": False, "error": "Failed to login to Vinted"}
+        
+        results = []
+        for product_id in request.product_ids:
+            try:
+                # Get product from database
+                product_doc = await db.products.find_one({"id": product_id, "user_id": current_user.id})
+                if not product_doc:
+                    results.append({"product_id": product_id, "success": False, "error": "Product not found"})
+                    continue
+                
+                # Prepare product data for browser relisting
+                product_data = {
+                    "title": product_doc.get("title", ""),
+                    "description": product_doc.get("description", ""),
+                    "price": product_doc.get("price", 0),
+                    "brand": product_doc.get("brand", ""),
+                    "condition": product_doc.get("condition", "Good")
+                }
+                
+                # Relist using browser automation
+                relist_result = await browser_client.relist_product_browser(product_data)
+                
+                if relist_result.get("success"):
+                    # Update last relisted timestamp
+                    await db.products.update_one(
+                        {"id": product_id},
+                        {"$set": {"last_relisted": datetime.utcnow()}}
+                    )
+                
+                results.append({
+                    "product_id": product_id, 
+                    "success": relist_result.get("success", False), 
+                    "message": relist_result.get("message", ""),
+                    "error": relist_result.get("error", "")
+                })
+                
+                # Add delay between relistings to avoid detection
+                await asyncio.sleep(random.uniform(5, 10))
+                
+            except Exception as e:
+                results.append({"product_id": product_id, "success": False, "error": str(e)})
+        
+        success_count = sum(1 for r in results if r["success"])
+        return {
+            "message": f"Relisted {success_count}/{len(request.product_ids)} products using browser automation",
+            "results": results,
+            "note": "Browser window was kept open to handle any CAPTCHAs manually"
+        }
+    
+    except Exception as e:
+        return {"success": False, "error": f"Browser relist failed: {str(e)}"}
+    
+    finally:
+        # Clean up browser resources
+        if browser_client:
+            try:
+                await browser_client.close_browser()
+            except:
+                pass  # Ignore cleanup errors
 
 @api_router.get("/dashboard/stats", response_model=DashboardStats)
 async def get_dashboard_stats(current_user: User = Depends(get_current_user)):

@@ -231,6 +231,44 @@ const Dashboard = () => {
     setIsRelisting(false);
   };
 
+  const handleBrowserRelist = async (productIds = selectedProducts) => {
+    if (productIds.length === 0) {
+      alert('Please select products to relist');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `🚀 Browser Relisting Mode\n\n` +
+      `This will open a browser window to relist ${productIds.length} product(s).\n` +
+      `Benefits:\n` +
+      `• Can handle CAPTCHAs manually\n` +
+      `• Mimics human behavior\n` +
+      `• Higher success rate\n\n` +
+      `Note: You may need to solve CAPTCHAs manually in the browser window.\n\n` +
+      `Continue with browser relisting?`
+    );
+
+    if (!confirmed) return;
+
+    setIsRelisting(true);
+    try {
+      const response = await axios.post(`${API}/products/relist-browser`, {
+        product_ids: productIds
+      });
+      
+      const message = response.data.message + '\n\n' + 
+        (response.data.note || '') + '\n\n' +
+        'Check the browser window if any CAPTCHAs appeared.';
+      
+      alert(message);
+      setSelectedProducts([]);
+      await fetchProducts();
+    } catch (error) {
+      alert('Browser relist failed: ' + (error.response?.data?.detail || error.message));
+    }
+    setIsRelisting(false);
+  };
+
   const toggleProductSelection = (productId) => {
     setSelectedProducts(prev => 
       prev.includes(productId)
@@ -379,19 +417,36 @@ const Dashboard = () => {
             </div>
           </button>
 
-          <button
-            onClick={() => handleRelist()}
-            disabled={isRelisting || selectedProducts.length === 0}
-            className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white p-6 rounded-xl shadow-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <div className="text-center">
+          <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-6 rounded-xl shadow-lg">
+            <div className="text-center text-white mb-4">
               <svg className="w-8 h-8 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
               <h3 className="text-lg font-semibold mb-2">Bulk Relist</h3>
-              <p className="text-sm opacity-90">Relist multiple products at once</p>
+              <p className="text-sm opacity-90">Choose your relisting method</p>
             </div>
-          </button>
+            <div className="space-y-2">
+              <button
+                onClick={() => handleRelist()}
+                disabled={isRelisting || selectedProducts.length === 0}
+                className="w-full bg-white/20 hover:bg-white/30 text-white py-2 px-4 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+              >
+                🚀 Quick Relist (API)
+              </button>
+              <button
+                onClick={() => handleBrowserRelist()}
+                disabled={isRelisting || selectedProducts.length === 0}
+                className="w-full bg-white/20 hover:bg-white/30 text-white py-2 px-4 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+              >
+                🌐 Browser Relist (Anti-CAPTCHA)
+              </button>
+            </div>
+            {selectedProducts.length > 0 && (
+              <p className="text-white/80 text-xs mt-2 text-center">
+                {selectedProducts.length} product(s) selected
+              </p>
+            )}
+          </div>
 
           <button className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white p-6 rounded-xl shadow-lg transition-all duration-200 transform hover:scale-105">
             <div className="text-center">
@@ -519,16 +574,25 @@ const Dashboard = () => {
                         </div>
                       </div>
                       
-                      <button
-                        onClick={() => handleRelist([product.id])}
-                        disabled={isRelisting}
-                        className="w-full mt-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center"
-                      >
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                        Relist Product
-                      </button>
+                      <div className="mt-3 space-y-2">
+                        <button
+                          onClick={() => handleRelist([product.id])}
+                          disabled={isRelisting}
+                          className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center"
+                        >
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                          🚀 Quick Relist
+                        </button>
+                        <button
+                          onClick={() => handleBrowserRelist([product.id])}
+                          disabled={isRelisting}
+                          className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center"
+                        >
+                          🌐 Browser Relist
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
